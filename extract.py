@@ -316,7 +316,7 @@ def add_degree(dbc, etd):
         rows = cursor.fetchall()
     if len(rows) != 1:
         sys.exit(f"ERROR - {etd} does not have exactly one degree.")
-    etd["degree"] = (f"{rows[0]['name']} ({rows[0]['abbr']})",)
+    etd["degree"] = f"{rows[0]['name']} ({rows[0]['abbr']})"
 
 
 def add_degree_discipline(dbc, etd):
@@ -477,6 +477,7 @@ def extract(host, user, password, database, collection_source_id):
                     etd["subjects"],
                     etd["abstract"],
                     etd["publisher"],
+                    etd["contributors"],
                     etd["date"],
                     etd["language"],
                     etd["degree"],
