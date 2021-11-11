@@ -17,7 +17,7 @@ def get_etds(dbc):
             "`node`.`uuid` as 'source_identifier', "
             "`node`.`title` as 'title' "
             "FROM `node` "
-            "WHERE `node`.`type` = 'etd' AND `node`.`status`"
+            "WHERE `node`.`type` = 'etd' AND `node`.`status` = 1"
         )
         cursor.execute(sql)
         return cursor.fetchall()
