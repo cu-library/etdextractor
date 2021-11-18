@@ -6,6 +6,7 @@ import csv
 import pymysql
 import re
 import subjects as s
+from internal_notes import internal_notes
 import sys
 
 
@@ -303,6 +304,21 @@ def add_language(dbc, etd):
         sys.exit(f"ERROR - {etd} has unexpected language.")
 
 
+def add_internal_notes(dbc, etd):
+    with dbc.cursor() as cursor:
+        sql = (
+            "SELECT "
+            "`dcterms_description_noteinternal_value` as 'note' "
+            "FROM `field_data_dcterms_description_noteinternal` "
+            "WHERE `entity_id` = %s"
+        )
+        cursor.execute(sql, (etd["nid"],))
+        rows = cursor.fetchall()
+    notes = [row["note"] for row in rows]
+    notes.extend(internal_notes.get(etd["nid"], []))
+    etd["internal_notes"] = "|".join(notes)
+
+
 def add_degree(dbc, etd):
     with dbc.cursor() as cursor:
         sql = (
@@ -430,6 +446,7 @@ def extract(host, user, password, database, collection_source_id):
             add_contributors(dbc, etd)
             add_date(dbc, etd)
             add_language(dbc, etd)
+            add_internal_notes(dbc, etd)
             add_degree(dbc, etd)
             add_degree_discipline(dbc, etd)
             add_degree_level(dbc, etd)
@@ -453,6 +470,7 @@ def extract(host, user, password, database, collection_source_id):
         "contributor",
         "date_created",
         "language",
+        "internal_note",
         "degree",
         "degree_discipline",
         "degree_level",
@@ -480,6 +498,7 @@ def extract(host, user, password, database, collection_source_id):
                     etd["contributors"],
                     etd["date"],
                     etd["language"],
+                    etd["internal_notes"],
                     etd["degree"],
                     etd["degree_discipline"],
                     etd["degree_level"],
