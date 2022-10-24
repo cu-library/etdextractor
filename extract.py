@@ -20,19 +20,6 @@ def get_etds(dbc):
             "`node`.`status` as 'visibility' "  
             "FROM `node` "
             "WHERE `node`.`type` = 'etd' AND `node`.`status` = 1 OR `node`.`status` = 0 "
-            "AND `uuid` != '183bce88-4336-4656-b61d-aabaf33b57bd' AND `uuid` != '9e9049e6-9661-4a8a-87c7-7d526344b752' "
-            "AND `uuid` != '6388ef9e-4268-42ac-8a47-261f34293b2b' AND `uuid` != 'a9b5b10e-763d-4ec5-95c6-de450752a513' "
-            "AND `uuid` != '3a8cd7ae-9f6d-4658-86e8-30b8bb8be409' AND `uuid` != 'e1650247-6ce1-407b-b7fe-95a57d0e2b13' "
-            "AND `uuid` != '2ef70b6f-0ff9-4eda-b40e-2994900b636f' AND `uuid` != '6978d884-28f8-4b01-8995-9d45366d4b43' "
-            "AND `uuid` != '66e7b8f8-01ec-4c85-bac2-cce9cd9504c6' AND `uuid` != 'b6aab834-6b85-41df-86fe-e049293123a1' "
-            "AND `uuid` != 'efb35d41-aa97-4ef1-b435-94da24638381' AND `uuid` != '3d9d3ef4-f407-42a7-b59f-54971b59b03c' "
-            "AND `uuid` != 'c0174eee-783e-4fcf-ad57-0fc7cdc59bf3' AND `uuid` != '5aa2d928-2c0d-4255-8e86-b4c76d471dfb' "
-            "AND `uuid` != '41967a1c-8dcf-4095-9986-66092defdc7d' AND `uuid` != '9376decd-bd89-4ee5-b527-5de7cbbb1df9' "
-            "AND `uuid` != 'e1ba2001-c341-43e9-86ef-e265a2dd9918' AND `uuid` != 'a2784df2-6a4b-47d4-b19c-4e2ae1fb6c1a' "
-            "AND `uuid` != '56fd0582-0147-41a2-930e-c03c03cbcaa0' AND `uuid` != '1e092f61-bf6a-4ff9-90c2-5407f8f89800' "
-            "AND `uuid` != '50892e3d-aa3e-4722-b2a0-012accb0c52a' AND `uuid` != '2ace4faa-6490-4e4e-921f-8ef91adf3c27' "
-            "AND `uuid` != 'bbd85d21-adba-4189-b8bc-0f088dd65336' AND `uuid` != 'a11b7c70-d25f-4aa9-9f6f-8e3a674ef7fa' "
-            "AND `uuid` != 'af555e0d-c64a-4317-9ac1-13a5880c6b6e' "
         )
         cursor.execute(sql)
         rows = cursor.fetchall()
