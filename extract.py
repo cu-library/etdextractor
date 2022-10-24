@@ -64,8 +64,7 @@ def add_identifier(dbc, etd):
             etd["identifier"] = f"DOI: {indentifier}"
             break
     if "identifier" not in etd:
-        etd["identifier"] = ""
-        #sys.exit(f"ERROR - {etd} does not have a DOI.")
+        sys.exit(f"ERROR - {etd} does not have a DOI.")
 
 
 def add_subjects(dbc, etd):
