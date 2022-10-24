@@ -5,12 +5,25 @@ import click
 import csv
 import pymysql
 import re
+import datetime
 import subjects as s
 from internal_notes import internal_notes
 import sys
 
 
 def get_etds(dbc):
+    today = datetime.date.today().year
+    rights_notes = (
+            f"Copyright © {today} the author(s). Theses may be used for "
+            "non-commercial research, educational, or related academic "
+            "purposes only. Such uses include personal study, distribution to"
+            " students, research and scholarship. Theses may only be shared by"
+            " linking to Carleton University Digital Library and no part may "
+            "be copied without proper attribution to the author; no part may "
+            "be used for commercial purposes directly or indirectly via a "
+            "for-profit platform; no adaptation or derivative works are "
+            "permitted without consent from the copyright owner."
+        )
     with dbc.cursor() as cursor:
         sql = (
             "SELECT "
@@ -23,7 +36,9 @@ def get_etds(dbc):
         )
         cursor.execute(sql)
         rows = cursor.fetchall()
- 
+    
+    for i in range(len(rows)):
+        rows[i]['rights_notes'] = rights_notes 
     for s in range(len(rows)):
         if rows[s]["visibility"] == 0:
             rows[s]["visibility"] = 'restricted'
@@ -484,7 +499,7 @@ def extract(host, user, password, database, parent_collection_id):
         "resource_type",
         "collection",
         "file",
-       # "rights_notes",
+        "rights_notes",
         "visibility"
     ]
 
@@ -514,7 +529,7 @@ def extract(host, user, password, database, parent_collection_id):
                     "Thesis",
                     parent_collection_id,
                     etd["files"],
-                   # etd["rights_notes"],
+                    etd["rights_notes"],
                     etd["visibility"]
                 ]
             )
