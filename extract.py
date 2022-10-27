@@ -435,6 +435,11 @@ def add_supplemental_file(dbc, etd):
     elif len(rows) == 1:
         etd["files"] = etd["files"] + "|" + rows[0]["uri"]
 
+def add_signed_agreeemnt(dbc, etd):
+    with dbc.cursor() as cursor:
+        sql = (
+            
+            )
 
 @click.command()
 @click.option("--host", default="localhost")
