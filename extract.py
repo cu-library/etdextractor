@@ -32,13 +32,7 @@ def get_etds(dbc):
             "`node`.`title` as 'title', "
             "`node`.`status` as 'visibility' "  
             "FROM `node` "
-            "WHERE `node`.`type` = 'etd' AND `node`.`status` = 1 OR `node`.`status` = 0 "
-            "AND `uuid` != '6388ef9e-4268-42ac-8a47-261f34293b2b' AND `uuid` != '2ef70b6f-0ff9-4eda-b40e-2994900b636f' "
-            "AND `UUID` != '3d9d3ef4-f407-42a7-b59f-54971b59b03c' AND `uuid` != 'c0174eee-783e-4fcf-ad57-0fc7cdc59bf3' "
-            "AND `uuid` != '5aa2d928-2c0d-4255-8e86-b4c76d471dfb' AND `uuid` != '41967a1c-8dcf-4095-9986-66092defdc7d' "
-            "AND `uuid` != '9376decd-bd89-4ee5-b527-5de7cbbb1df9' AND `uuid` != 'e1ba2001-c341-43e9-86ef-e265a2dd9918' "
-            "AND `uuid` != 'a2784df2-6a4b-47d4-b19c-4e2ae1fb6c1a' AND `uuid` != '56fd0582-0147-41a2-930e-c03c03cbcaa0' "
-            "AND `uuid` != '1e092f61-bf6a-4ff9-90c2-5407f8f89800' AND `uuid` != 'af555e0d-c64a-4317-9ac1-13a5880c6b6e' "
+            "WHERE `node`.`type` = 'etd' AND (`node`.`status` = 1 OR `node`.`status` = 0) "
         )
         cursor.execute(sql)
         rows = cursor.fetchall()
@@ -78,7 +72,7 @@ def add_identifier(dbc, etd):
         cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
     if not rows:
-        sys.exit(f"ERROR - {etd} does not have any identifiers.")
+        etd["identifier"]= ""
     for row in rows:
         indentifier = row["identifier"]
         if indentifier.startswith("https://doi.org/10.22215"):
@@ -86,7 +80,6 @@ def add_identifier(dbc, etd):
             break
     if "identifier" not in etd:
         etd["identifier"] = ""
-       # sys.exit(f"ERROR - {etd} does not have a DOI.")
 
 
 def add_subjects(dbc, etd):
@@ -442,11 +435,11 @@ def add_supplemental_file(dbc, etd):
     elif len(rows) == 1:
         etd["files"] = etd["files"] + "|" + rows[0]["uri"]
 
-def add_signed_agreement(dbc, etd):
+def add_agreement(dbc, etd):
     with dbc.cursor() as cursor:
         sql = (
             "SELECT "
-            "`signature_policy_agreement_target_id` as 'signed_agreement' "
+            "`signature_policy_agreement_target_id` as 'agreement' "
             "FROM `field_data_signature_resource` "
             "LEFT JOIN `field_data_signature_policy_agreement` ON "
             "`field_data_signature_policy_agreement`.`entity_id`"
@@ -456,28 +449,27 @@ def add_signed_agreement(dbc, etd):
         )
         cursor.execute(sql, etd)
         rows = cursor.fetchall()
-    etd["signed_agreement"] = ""
+    etd["agreement"] = ""
     temp = "" 
     if len(rows) >= 1:
 
         for i in range(len(rows)):
 
-            if rows[i]['signed_agreement'] == 11:
-                temp = 'Carleton University Thesis License Agreement, '
-            elif rows[i]['signed_agreement'] == 12:
-                temp = temp + 'CURIE Agreement, '
-            elif rows[i]['signed_agreement'] == 13:
-                temp = temp + 'LAC Non-Exclusive Licence, '
-            elif rows[i]['signed_agreement'] == 14:
-                temp = temp + 'Academic Integrity Statement, '
-            elif rows[i]['signed_agreement'] == 15:
-                temp = temp + 'FIPPA Statement, '
-            elif rows[i]['signed_agreement'] == 16:
-                temp = temp + 'Licence to Carleton University, '
-            elif rows[i]['signed_agreement'] == 17:
-                temp = temp + 'CURVE Submission Agreement, '
-        new_string = temp.rstrip(', ')
-        etd["signed_agreement"] = new_string
+            if rows[i]['agreement'] == 11:
+                temp = 'https://digital.library.carleton.ca/concern/works/pc289j04q|'
+            elif rows[i]['agreement'] == 12:
+                temp = temp + '://digital.library.carleton.ca/concern/works/j9602065z|'
+            elif rows[i]['agreement'] == 13:
+                temp = temp + 'https://digital.library.carleton.ca/concern/works/tt44pm84n|'
+            elif rows[i]['agreement'] == 14:
+                temp = temp + 'https://digital.library.carleton.ca/concern/works/nv9352841|'
+            elif rows[i]['agreement'] == 15:
+                temp = temp + 'https://digital.library.carleton.ca/concern/works/zc77sq08x|'
+            elif rows[i]['agreement'] == 16:
+                temp = temp + 'https://digital.library.carleton.ca/concern/works/ng451h485|'
+            elif rows[i]['agreement'] == 17:
+                temp = temp + 'https://digital.library.carleton.ca/concern/works/4t64gn18r|'
+        etd["agreement"] = temp
     
 @click.command()
 @click.option("--host", default="localhost")
@@ -517,7 +509,7 @@ def extract(host, user, password, database, parent_collection_id):
             add_degree_level(dbc, etd)
             add_pdf_file(dbc, etd)
             add_supplemental_file(dbc, etd)
-            add_signed_agreement(dbc, etd)
+            add_agreement(dbc, etd)
 
     print("Total: ", len(etds))
     print(
@@ -545,7 +537,7 @@ def extract(host, user, password, database, parent_collection_id):
         "file",
         "rights_notes",
         "visibility",
-        "signed_agreement"
+        "agreement"
     ]
 
     with open(
@@ -576,7 +568,7 @@ def extract(host, user, password, database, parent_collection_id):
                     etd["files"],
                     etd["rights_notes"],
                     etd["visibility"],
-                    etd["signed_agreement"]
+                    etd["agreement"]
                 ]
             )
 
