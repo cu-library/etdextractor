@@ -459,10 +459,9 @@ def add_supplemental_file(dbc, etd):
         files = rows[0]["uri"]
         split_files = files.split("/")
         for i in split_files:
-            if ".zip" in i:
+            if "." in i:
                 split_files = i
                 rows[0]["uri"] = split_files
-                print(rows[0]["uri"]) 
         etd["files"] = etd["files"] + "|" + rows[0]["uri"]
 
 def add_agreement(dbc, etd):
