@@ -12,7 +12,6 @@ import sys
 import os
 import filecmp
 import shutil
-import time
 
 
 def get_etds(dbc):
@@ -405,13 +404,9 @@ def shallow_copy(destination):
 
     for subdir, dirs, files in os.walk(src):
         for file in files:
-            #print(subdir)
-            tmp2 = os.path.join(subdir, file)
-            #print(tmp2)
-            tmp = os.path.join(dest, file)
-            #print(tmp)
-            if not os.path.exists(dest) or not filecmp.cmp(tmp2, tmp, shallow=True):
-                #print("copying file go")
+            private_source = os.path.join(subdir, file)
+            file_destination = os.path.join(dest, file)
+            if not os.path.exists(dest) or not filecmp.cmp(private_source, file_destination, shallow=True):
                 shutil.copyfile(os.path.join(subdir, file), os.path.join(dest, file))
 
 def add_pdf_file(dbc, etd):
@@ -527,7 +522,7 @@ def extract(host, user, password, database, parent_collection_id, destination):
 
     etds = get_etds(dbc)
     
-    #shallow_copy(destination)
+    shallow_copy(destination)
 
     with click.progressbar(etds) as bar:
         for etd in bar:
