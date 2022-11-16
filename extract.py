@@ -9,6 +9,10 @@ import datetime
 import subjects as s
 from internal_notes import internal_notes
 import sys
+import os
+import filecmp
+import shutil
+import time
 
 
 def get_etds(dbc):
@@ -395,6 +399,20 @@ def add_degree_level(dbc, etd):
     else:
         sys.exit(f"ERROR - {etd} has unexpected degree level.")
 
+def shallow_copy(destination):
+    src = "/var/www/drupal/drupal-root/sites/default/files/private/etd/"
+    dest = destination
+
+    for subdir, dirs, files in os.walk(src):
+        for file in files:
+            #print(subdir)
+            tmp2 = os.path.join(subdir, file)
+            #print(tmp2)
+            tmp = os.path.join(dest, file)
+            #print(tmp)
+            if not os.path.exists(dest) or not filecmp.cmp(tmp2, tmp, shallow=True):
+                #print("copying file go")
+                shutil.copyfile(os.path.join(subdir, file), os.path.join(dest, file))
 
 def add_pdf_file(dbc, etd):
     with dbc.cursor() as cursor:
@@ -411,7 +429,12 @@ def add_pdf_file(dbc, etd):
     if len(rows) > 1:
         sys.exit(f"ERROR - {etd} has more than one pdf file.")
     elif len(rows) == 1:
-        etd["files"] = rows[0]["uri"]
+        files = rows[0]["uri"]
+        split_files = files.split("/")
+        for i in split_files:
+            if ".pdf" in i:
+                split_files = i
+        etd["files"] = split_files
     else:
         etd["files"] = ""
 
@@ -433,6 +456,13 @@ def add_supplemental_file(dbc, etd):
     if len(rows) > 1:
         sys.exit(f"ERROR - {etd} has more than one supplemental file.")
     elif len(rows) == 1:
+        files = rows[0]["uri"]
+        split_files = files.split("/")
+        for i in split_files:
+            if ".zip" in i:
+                split_files = i
+                rows[0]["uri"] = split_files
+                print(rows[0]["uri"]) 
         etd["files"] = etd["files"] + "|" + rows[0]["uri"]
 
 def add_agreement(dbc, etd):
@@ -481,7 +511,12 @@ def add_agreement(dbc, etd):
     required=True,
     help="The source ID for the parent collection in Hyrax.",
 )
-def extract(host, user, password, database, parent_collection_id):
+@click.option(
+    "--destination",
+    required=True,
+    help="The destination for the private files to be sent to",
+)
+def extract(host, user, password, database, parent_collection_id, destination):
     # Connect to the database
     dbc = pymysql.connect(
         host=host,
@@ -492,6 +527,8 @@ def extract(host, user, password, database, parent_collection_id):
     )
 
     etds = get_etds(dbc)
+    
+    #shallow_copy(destination)
 
     with click.progressbar(etds) as bar:
         for etd in bar:
@@ -533,8 +570,8 @@ def extract(host, user, password, database, parent_collection_id):
         "degree_discipline",
         "degree_level",
         "resource_type",
-        "collection",
-        "file",
+        "parents",
+        "files",
         "rights_notes",
         "visibility",
         "agreement"
