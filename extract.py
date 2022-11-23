@@ -494,7 +494,30 @@ def add_agreement(dbc, etd):
             elif rows[i]['agreement'] == 17:
                 temp = temp + 'https://digital.library.carleton.ca/concern/works/4t64gn18r|'
         etd["agreement"] = temp
-    
+
+def add_access_right(dbc, etd):
+    request_form = "https://library.carleton.ca/forms/request-pdf-copy-thesis"
+    with dbc.cursor() as cursor:
+        sql = (
+            "SELECT "
+            "`node`.`uuid` as 'source_identifier', "
+            "`node`.`title` as 'title', "
+            "`node`.`status` as 'visibility', "
+            "`filename` as 'filename', "
+            "`uri` as 'uri' "
+            "FROM `node` "
+            "LEFT JOIN `field_data_etd_pdf` ON "
+            "`node`.`nid` = `field_data_etd_pdf`.`entity_id` "
+            "LEFT JOIN `file_managed` ON "
+            "`field_data_etd_pdf`.`etd_pdf_fid` = `file_managed`.`fid` "
+            "WHERE `node`.`type` = 'etd' AND (`node`.`status` = 1 AND filename IS NULL)"
+
+        )
+        cursor.execute(sql, etd)
+        rows = cursor.fetchall()
+    etd["access_right"] = request_form
+
+
 @click.command()
 @click.option("--host", default="localhost")
 @click.option("--user", default="readonly")
@@ -507,7 +530,7 @@ def add_agreement(dbc, etd):
 )
 @click.option(
     "--destination",
-    required=True,
+    required=False,
     help="The destination for the private files to be sent to",
 )
 def extract(host, user, password, database, parent_collection_id, destination):
@@ -522,7 +545,7 @@ def extract(host, user, password, database, parent_collection_id, destination):
 
     etds = get_etds(dbc)
     
-    shallow_copy(destination)
+    #shallow_copy(destination)
 
     with click.progressbar(etds) as bar:
         for etd in bar:
@@ -540,7 +563,8 @@ def extract(host, user, password, database, parent_collection_id, destination):
             add_degree_level(dbc, etd)
             add_pdf_file(dbc, etd)
             add_supplemental_file(dbc, etd)
-            add_agreement(dbc, etd)
+            add_agreement(dbc, etd),
+            add_access_right(dbc, etd)
 
     print("Total: ", len(etds))
     print(
@@ -568,7 +592,8 @@ def extract(host, user, password, database, parent_collection_id, destination):
         "files",
         "rights_notes",
         "visibility",
-        "agreement"
+        "agreement",
+        "access_right",
     ]
 
     with open(
@@ -599,7 +624,8 @@ def extract(host, user, password, database, parent_collection_id, destination):
                     etd["files"],
                     etd["rights_notes"],
                     etd["visibility"],
-                    etd["agreement"]
+                    etd["agreement"],
+                    etd["access_right"]
                 ]
             )
 
