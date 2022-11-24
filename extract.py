@@ -15,18 +15,6 @@ import shutil
 
 
 def get_etds(dbc):
-    today = datetime.date.today().year
-    rights_notes = (
-            f"Copyright © {today} the author(s). Theses may be used for "
-            "non-commercial research, educational, or related academic "
-            "purposes only. Such uses include personal study, distribution to"
-            " students, research and scholarship. Theses may only be shared by"
-            " linking to Carleton University Digital Library and no part may "
-            "be copied without proper attribution to the author; no part may "
-            "be used for commercial purposes directly or indirectly via a "
-            "for-profit platform; no adaptation or derivative works are "
-            "permitted without consent from the copyright owner."
-        )
     with dbc.cursor() as cursor:
         sql = (
             "SELECT "
@@ -39,9 +27,7 @@ def get_etds(dbc):
         )
         cursor.execute(sql)
         rows = cursor.fetchall()
-    
-    for i in range(len(rows)):
-        rows[i]['rights_notes'] = rights_notes 
+
     for s in range(len(rows)):
         if rows[s]["visibility"] == 0:
             rows[s]["visibility"] = 'restricted'
@@ -299,6 +285,22 @@ def add_date(dbc, etd):
         )
         cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
+    year_pub = rows[0]["date"][:4]
+    rights_notes = (
+            f"Copyright © {year_pub} the author(s). Theses may be used for "
+            "non-commercial research, educational, or related academic "
+            "purposes only. Such uses include personal study, distribution to"
+            " students, research and scholarship. Theses may only be shared by"
+            " linking to Carleton University Digital Library and no part may "
+            "be copied without proper attribution to the author; no part may "
+            "be used for commercial purposes directly or indirectly via a "
+            "for-profit platform; no adaptation or derivative works are "
+            "permitted without consent from the copyright owner."
+	)
+    for i in range(len(rows)):
+        rows[i]['rights_notes'] = rights_notes    
+    
+    etd["rights_notes"] = rows[0]["rights_notes"]
     if len(rows) != 1:
         sys.exit(f"ERROR - {etd} does not have exactly one date.")
     etd["date"] = rows[0]["date"][:4]
