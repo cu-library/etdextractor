@@ -1,18 +1,16 @@
 #! /usr/bin/env python
 
 from bs4 import BeautifulSoup
+from internal_notes import internal_notes
 import click
 import csv
+import filecmp
+import os
 import pymysql
 import re
-import datetime
-import subjects as s
-from internal_notes import internal_notes
-import sys
-import os
-import filecmp
 import shutil
-
+import subjects as s
+import sys
 
 def get_etds(dbc):
     with dbc.cursor() as cursor:
@@ -21,7 +19,7 @@ def get_etds(dbc):
             "`nid` as 'nid', "
             "`node`.`uuid` as 'source_identifier', "
             "`node`.`title` as 'title', "
-            "`node`.`status` as 'visibility' "  
+            "`node`.`status` as 'visibility' "
             "FROM `node` "
             "WHERE `node`.`type` = 'etd' AND (`node`.`status` = 1 OR `node`.`status` = 0) "
         )
@@ -30,10 +28,11 @@ def get_etds(dbc):
 
     for s in range(len(rows)):
         if rows[s]["visibility"] == 0:
-            rows[s]["visibility"] = 'restricted'
+            rows[s]["visibility"] = "restricted"
         elif rows[s]["visibility"] == 1:
-            rows[s]["visibility"] = 'open'
+            rows[s]["visibility"] = "open"
     return rows
+
 
 def add_creator(dbc, etd):
     with dbc.cursor() as cursor:
@@ -61,7 +60,7 @@ def add_identifier(dbc, etd):
         cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
     if not rows:
-        etd["identifier"]= ""
+        etd["identifier"] = ""
     for row in rows:
         indentifier = row["identifier"]
         if indentifier.startswith("https://doi.org/10.22215"):
@@ -287,19 +286,19 @@ def add_date(dbc, etd):
         rows = cursor.fetchall()
     year_pub = rows[0]["date"][:4]
     rights_notes = (
-            f"Copyright © {year_pub} the author(s). Theses may be used for "
-            "non-commercial research, educational, or related academic "
-            "purposes only. Such uses include personal study, distribution to"
-            " students, research and scholarship. Theses may only be shared by"
-            " linking to Carleton University Digital Library and no part may "
-            "be copied without proper attribution to the author; no part may "
-            "be used for commercial purposes directly or indirectly via a "
-            "for-profit platform; no adaptation or derivative works are "
-            "permitted without consent from the copyright owner."
-	)
+        f"Copyright © {year_pub} the author(s). Theses may be used for "
+        "non-commercial research, educational, or related academic "
+        "purposes only. Such uses include personal study, distribution to"
+        " students, research and scholarship. Theses may only be shared by"
+        " linking to Carleton University Digital Library and no part may "
+        "be copied without proper attribution to the author; no part may "
+        "be used for commercial purposes directly or indirectly via a "
+        "for-profit platform; no adaptation or derivative works are "
+        "permitted without consent from the copyright owner."
+    )
     for i in range(len(rows)):
-        rows[i]['rights_notes'] = rights_notes    
-    
+        rows[i]["rights_notes"] = rights_notes
+
     etd["rights_notes"] = rows[0]["rights_notes"]
     if len(rows) != 1:
         sys.exit(f"ERROR - {etd} does not have exactly one date.")
@@ -400,6 +399,7 @@ def add_degree_level(dbc, etd):
     else:
         sys.exit(f"ERROR - {etd} has unexpected degree level.")
 
+
 def shallow_copy(destination):
     src = "/var/www/drupal/drupal-root/sites/default/files/private/etd/"
     dest = destination
@@ -408,8 +408,13 @@ def shallow_copy(destination):
         for file in files:
             private_source = os.path.join(subdir, file)
             file_destination = os.path.join(dest, file)
-            if not os.path.exists(dest) or not filecmp.cmp(private_source, file_destination, shallow=True):
-                shutil.copyfile(os.path.join(subdir, file), os.path.join(dest, file))
+            if not os.path.exists(dest) or not filecmp.cmp(
+                private_source, file_destination, shallow=True
+            ):
+                shutil.copyfile(
+                    os.path.join(subdir, file), os.path.join(dest, file)
+                )
+
 
 def add_pdf_file(dbc, etd):
     with dbc.cursor() as cursor:
@@ -461,6 +466,7 @@ def add_supplemental_file(dbc, etd):
                 rows[0]["uri"] = split_files
         etd["files"] = etd["files"] + "|" + rows[0]["uri"]
 
+
 def add_agreement(dbc, etd):
     with dbc.cursor() as cursor:
         sql = (
@@ -471,31 +477,52 @@ def add_agreement(dbc, etd):
             "`field_data_signature_policy_agreement`.`entity_id`"
             " = "
             "`field_data_signature_resource`.`entity_id`"
-            "WHERE `field_data_signature_resource`.`signature_resource_target_id` = {}".format((etd["nid"]))
+            "WHERE `field_data_signature_resource`.`signature_resource_target_id` = {}".format(
+                (etd["nid"])
+            )
         )
         cursor.execute(sql, etd)
         rows = cursor.fetchall()
     etd["agreement"] = ""
-    temp = "" 
+    temp = ""
     if len(rows) >= 1:
 
         for i in range(len(rows)):
 
-            if rows[i]['agreement'] == 11:
-                temp = 'https://digital.library.carleton.ca/concern/works/pc289j04q|'
-            elif rows[i]['agreement'] == 12:
-                temp = temp + '://digital.library.carleton.ca/concern/works/j9602065z|'
-            elif rows[i]['agreement'] == 13:
-                temp = temp + 'https://digital.library.carleton.ca/concern/works/tt44pm84n|'
-            elif rows[i]['agreement'] == 14:
-                temp = temp + 'https://digital.library.carleton.ca/concern/works/nv9352841|'
-            elif rows[i]['agreement'] == 15:
-                temp = temp + 'https://digital.library.carleton.ca/concern/works/zc77sq08x|'
-            elif rows[i]['agreement'] == 16:
-                temp = temp + 'https://digital.library.carleton.ca/concern/works/ng451h485|'
-            elif rows[i]['agreement'] == 17:
-                temp = temp + 'https://digital.library.carleton.ca/concern/works/4t64gn18r|'
+            if rows[i]["agreement"] == 11:
+                temp = "https://digital.library.carleton.ca/concern/works/pc289j04q|"
+            elif rows[i]["agreement"] == 12:
+                temp = (
+                    temp
+                    + "://digital.library.carleton.ca/concern/works/j9602065z|"
+                )
+            elif rows[i]["agreement"] == 13:
+                temp = (
+                    temp
+                    + "https://digital.library.carleton.ca/concern/works/tt44pm84n|"
+                )
+            elif rows[i]["agreement"] == 14:
+                temp = (
+                    temp
+                    + "https://digital.library.carleton.ca/concern/works/nv9352841|"
+                )
+            elif rows[i]["agreement"] == 15:
+                temp = (
+                    temp
+                    + "https://digital.library.carleton.ca/concern/works/zc77sq08x|"
+                )
+            elif rows[i]["agreement"] == 16:
+                temp = (
+                    temp
+                    + "https://digital.library.carleton.ca/concern/works/ng451h485|"
+                )
+            elif rows[i]["agreement"] == 17:
+                temp = (
+                    temp
+                    + "https://digital.library.carleton.ca/concern/works/4t64gn18r|"
+                )
         etd["agreement"] = temp
+
 
 def add_access_right(dbc, etd):
     request_form = "https://library.carleton.ca/forms/request-pdf-copy-thesis"
@@ -513,7 +540,6 @@ def add_access_right(dbc, etd):
             "LEFT JOIN `file_managed` ON "
             "`field_data_etd_pdf`.`etd_pdf_fid` = `file_managed`.`fid` "
             "WHERE `node`.`type` = 'etd' AND (`node`.`status` = 1 AND filename IS NULL)"
-
         )
         cursor.execute(sql, etd)
         rows = cursor.fetchall()
@@ -546,8 +572,8 @@ def extract(host, user, password, database, parent_collection_id, destination):
     )
 
     etds = get_etds(dbc)
-    
-    #shallow_copy(destination)
+
+    # shallow_copy(destination)
 
     with click.progressbar(etds) as bar:
         for etd in bar:
@@ -627,7 +653,7 @@ def extract(host, user, password, database, parent_collection_id, destination):
                     etd["rights_notes"],
                     etd["visibility"],
                     etd["agreement"],
-                    etd["access_right"]
+                    etd["access_right"],
                 ]
             )
 
