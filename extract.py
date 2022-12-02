@@ -4,33 +4,47 @@ from bs4 import BeautifulSoup
 from internal_notes import internal_notes
 import click
 import csv
-import filecmp
+import hashlib
 import os
+import pathlib
 import pymysql
 import re
 import shutil
 import subjects as s
-import sys
+
+SPLIT_PATTERN = "|||"
+
+ACCESS_NOTE = (
+    "This work is available on request. "
+    "You can request a copy at "
+    "https://library.carleton.ca/forms/request-pdf-copy-thesis"
+)
+
+
+class ProcessingException(Exception):
+    """Raised when the processor encounters bad ETD data"""
+
 
 def get_etds(dbc):
     with dbc.cursor() as cursor:
         sql = (
             "SELECT "
-            "`nid` as 'nid', "
-            "`node`.`uuid` as 'source_identifier', "
-            "`node`.`title` as 'title', "
-            "`node`.`status` as 'visibility' "
+            "`nid` AS 'nid', "
+            "`node`.`uuid` AS 'source_identifier', "
+            "`node`.`title` AS 'title', "
+            "CASE `node`.`status` "
+            "  WHEN 0 THEN 'restricted' "
+            "  WHEN 1 THEN 'open' "
+            "END "
+            "AS 'visibility' "
             "FROM `node` "
-            "WHERE `node`.`type` = 'etd' AND (`node`.`status` = 1 OR `node`.`status` = 0) "
+            "WHERE `node`.`type` = 'etd' "
+            "AND `node`.`uuid` NOT IN ( "
+            "  '50892e3d-aa3e-4722-b2a0-012accb0c52a' "  # Duplicate of a4c09901-eb02-4746-995d-343fb23111cd # noqa: E501
+            ")"
         )
         cursor.execute(sql)
         rows = cursor.fetchall()
-
-    for s in range(len(rows)):
-        if rows[s]["visibility"] == 0:
-            rows[s]["visibility"] = "restricted"
-        elif rows[s]["visibility"] == 1:
-            rows[s]["visibility"] = "open"
     return rows
 
 
@@ -45,7 +59,9 @@ def add_creator(dbc, etd):
         cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
     if len(rows) != 1:
-        sys.exit(f"ERROR - {etd} does not have exactly one creator.")
+        raise ProcessingException(
+            f"ERROR - {etd} does not have exactly one creator."
+        )
     etd["creator"] = rows[0]["creator"].strip()
 
 
@@ -70,7 +86,7 @@ def add_identifier(dbc, etd):
         etd["identifier"] = ""
 
 
-def add_subjects(dbc, etd):
+def add_subjects(dbc, etd, subject_error_log_path):
     with dbc.cursor() as cursor:
         sql = (
             "SELECT "
@@ -91,10 +107,10 @@ def add_subjects(dbc, etd):
                 subjects.add(subject)
             else:
                 with open(
-                    "curve_subject_not_migrated.txt", "a", encoding="utf-8"
+                    subject_error_log_path, "a", encoding="utf-8"
                 ) as not_migrated_file:
                     not_migrated_file.write(f"{subject}\n")
-    etd["subjects"] = "|".join(sorted(subjects))
+    etd["subjects"] = SPLIT_PATTERN.join(sorted(subjects))
 
 
 def process_subject(subject):
@@ -223,7 +239,7 @@ def add_abstract(dbc, etd):
         cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
     if len(rows) > 1:
-        sys.exit(f"ERROR - {etd} has more than one abstract.")
+        raise ProcessingException(f"ERROR - {etd} has more than one abstract.")
     elif len(rows) == 1:
         soup = BeautifulSoup(rows[0]["abstract"], "html.parser")
         abstract = soup.get_text(strip=True)
@@ -246,7 +262,9 @@ def add_publisher(dbc, etd):
         cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
     if len(rows) != 1:
-        sys.exit(f"ERROR - {etd} does not have exactly one publisher.")
+        raise ProcessingException(
+            f"ERROR - {etd} does not have exactly one publisher."
+        )
     etd["publisher"] = rows[0]["publisher"].strip()
 
 
@@ -271,7 +289,7 @@ def add_contributors(dbc, etd):
             contributors.append(f"{name} ({role})")
         else:
             contributors.append(name)
-    etd["contributors"] = "|".join(contributors)
+    etd["contributors"] = SPLIT_PATTERN.join(contributors)
 
 
 def add_date(dbc, etd):
@@ -284,9 +302,16 @@ def add_date(dbc, etd):
         )
         cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
-    year_pub = rows[0]["date"][:4]
-    rights_notes = (
-        f"Copyright © {year_pub} the author(s). Theses may be used for "
+    if len(rows) != 1:
+        raise ProcessingException(
+            f"ERROR - {etd} does not have exactly one date."
+        )
+    etd["date"] = rows[0]["date"][:4]
+
+
+def add_rights_notes(etd):
+    etd["rights_notes"] = (
+        f"Copyright © {etd['date']} the author(s). Theses may be used for "
         "non-commercial research, educational, or related academic "
         "purposes only. Such uses include personal study, distribution to"
         " students, research and scholarship. Theses may only be shared by"
@@ -296,13 +321,6 @@ def add_date(dbc, etd):
         "for-profit platform; no adaptation or derivative works are "
         "permitted without consent from the copyright owner."
     )
-    for i in range(len(rows)):
-        rows[i]["rights_notes"] = rights_notes
-
-    etd["rights_notes"] = rows[0]["rights_notes"]
-    if len(rows) != 1:
-        sys.exit(f"ERROR - {etd} does not have exactly one date.")
-    etd["date"] = rows[0]["date"][:4]
 
 
 def add_language(dbc, etd):
@@ -316,7 +334,9 @@ def add_language(dbc, etd):
         cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
     if len(rows) != 1:
-        sys.exit(f"ERROR - {etd} does not have exactly one language.")
+        raise ProcessingException(
+            f"ERROR - {etd} does not have exactly one language."
+        )
     language = rows[0]["language"].strip()
     if language == "French":
         etd["language"] = "fra"
@@ -327,7 +347,7 @@ def add_language(dbc, etd):
     elif language == "English":
         etd["language"] = "eng"
     else:
-        sys.exit(f"ERROR - {etd} has unexpected language.")
+        raise ProcessingException(f"ERROR - {etd} has unexpected language.")
 
 
 def add_internal_notes(dbc, etd):
@@ -342,7 +362,7 @@ def add_internal_notes(dbc, etd):
         rows = cursor.fetchall()
     notes = [row["note"] for row in rows]
     notes.extend(internal_notes.get(etd["nid"], []))
-    etd["internal_notes"] = "|".join(notes)
+    etd["internal_notes"] = SPLIT_PATTERN.join(notes)
 
 
 def add_degree(dbc, etd):
@@ -357,7 +377,9 @@ def add_degree(dbc, etd):
         cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
     if len(rows) != 1:
-        sys.exit(f"ERROR - {etd} does not have exactly one degree.")
+        raise ProcessingException(
+            f"ERROR - {etd} does not have exactly one degree."
+        )
     etd["degree"] = f"{rows[0]['name']} ({rows[0]['abbr']})"
 
 
@@ -372,7 +394,9 @@ def add_degree_discipline(dbc, etd):
         cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
     if len(rows) > 1:
-        sys.exit(f"ERROR - {etd} has more than one degree discipline.")
+        raise ProcessingException(
+            f"ERROR - {etd} has more than one degree discipline."
+        )
     elif len(rows) == 1:
         etd["degree_discipline"] = rows[0]["discipline"].strip()
     else:
@@ -390,81 +414,104 @@ def add_degree_level(dbc, etd):
         cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
     if len(rows) != 1:
-        sys.exit(f"ERROR - {etd} does not have exactly one degree level.")
+        raise ProcessingException(
+            f"ERROR - {etd} does not have exactly one degree level."
+        )
     level = rows[0]["level"].strip()
     if level == "Master's":
         etd["degree_level"] = "1"
     elif level == "Doctoral":
         etd["degree_level"] = "2"
     else:
-        sys.exit(f"ERROR - {etd} has unexpected degree level.")
+        raise ProcessingException(
+            f"ERROR - {etd} has unexpected degree level."
+        )
 
 
-def shallow_copy(destination):
-    src = "/var/www/drupal/drupal-root/sites/default/files/private/etd/"
-    dest = destination
-
-    for subdir, dirs, files in os.walk(src):
-        for file in files:
-            private_source = os.path.join(subdir, file)
-            file_destination = os.path.join(dest, file)
-            if not os.path.exists(dest) or not filecmp.cmp(
-                private_source, file_destination, shallow=True
-            ):
-                shutil.copyfile(
-                    os.path.join(subdir, file), os.path.join(dest, file)
-                )
-
-
-def add_pdf_file(dbc, etd):
+def add_pdf_file_or_access_right(dbc, etd, destination_path):
     with dbc.cursor() as cursor:
         sql = (
             "SELECT "
-            "`file_managed`.`uri` as 'uri' "
+            "`file_managed`.`uri` as 'uri', "
+            "`filehash`.`md5` as 'md5' "
             "FROM `field_data_etd_pdf` "
             "LEFT JOIN `file_managed` ON "
             "`field_data_etd_pdf`.`etd_pdf_fid` = `file_managed`.`fid` "
+            "LEFT JOIN `filehash` ON "
+            "`field_data_etd_pdf`.`etd_pdf_fid` = `filehash`.`fid` "
             "WHERE `field_data_etd_pdf`.`entity_id` = %s"
         )
         cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
     if len(rows) > 1:
-        sys.exit(f"ERROR - {etd} has more than one pdf file.")
+        raise ProcessingException(f"ERROR - {etd} has more than one pdf file.")
     elif len(rows) == 1:
-        files = rows[0]["uri"]
-        split_files = files.split("/")
-        for i in split_files:
-            if ".pdf" in i:
-                split_files = i
-        etd["files"] = split_files
+        etd["files"] = process_file_uri(
+            rows[0]["uri"], destination_path, rows[0]["md5"]
+        )
+        etd["access_right"] = ""
     else:
         etd["files"] = ""
+        etd["access_right"] = ACCESS_NOTE
 
 
-def add_supplemental_file(dbc, etd):
+def add_supplemental_file(dbc, etd, destination_path):
     with dbc.cursor() as cursor:
         sql = (
             "SELECT "
-            "`file_managed`.`uri` as 'uri' "
+            "`file_managed`.`uri` as 'uri', "
+            "`filehash`.`md5` as 'md5' "
             "FROM `field_data_etd_supplemental_files` "
             "LEFT JOIN `file_managed` ON "
             "`field_data_etd_supplemental_files`.`etd_supplemental_files_fid`"
             " = "
             "`file_managed`.`fid` "
+            "LEFT JOIN `filehash` ON "
+            "`field_data_etd_supplemental_files`.`etd_supplemental_files_fid` "
+            " = "
+            "`filehash`.`fid` "
             "WHERE `field_data_etd_supplemental_files`.`entity_id` = %s"
         )
         cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
     if len(rows) > 1:
-        sys.exit(f"ERROR - {etd} has more than one supplemental file.")
+        raise ProcessingException(
+            f"ERROR - {etd} has more than one supplemental file."
+        )
     elif len(rows) == 1:
-        files = rows[0]["uri"]
-        split_files = files.split("/")
-        for i in split_files:
-            if "." in i:
-                split_files = i
-                rows[0]["uri"] = split_files
-        etd["files"] = etd["files"] + "|" + rows[0]["uri"]
+        etd["files"] = (
+            etd["files"]
+            + SPLIT_PATTERN
+            + process_file_uri(
+                rows[0]["uri"], destination_path, rows[0]["md5"]
+            )
+        )
+
+
+def process_file_uri(uri, destination_path, md5):
+    file_source_path = pathlib.Path(
+        "/var/www/drupal/drupal-root/"
+        + uri.replace("private://", "sites/default/files/private/").replace(
+            "public://", "sites/default/files/"
+        )
+    )
+    if not file_source_path.exists():
+        raise ProcessingException(f"ERROR - {uri} doesn't exist.")
+    file_destination_path = destination_path / file_source_path.name
+    if file_destination_path.exists():
+        raise ProcessingException(
+            f"ERROR - {file_destination_path} already copied."
+        )
+    shutil.copy(file_source_path, file_destination_path)
+    hash_md5 = hashlib.md5()
+    with open(file_destination_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    if hash_md5.hexdigest().lower() != md5.lower():
+        raise ProcessingException(
+            f"ERROR - {file_destination_path} has the wrong hash."
+        )
+    return str(file_destination_path.name)
 
 
 def add_agreement(dbc, etd):
@@ -477,91 +524,48 @@ def add_agreement(dbc, etd):
             "`field_data_signature_policy_agreement`.`entity_id`"
             " = "
             "`field_data_signature_resource`.`entity_id`"
-            "WHERE `field_data_signature_resource`.`signature_resource_target_id` = {}".format(
-                (etd["nid"])
-            )
+            "WHERE "
+            "`field_data_signature_resource`.`signature_resource_target_id` "
+            "= %s"
         )
-        cursor.execute(sql, etd)
+        cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
-    etd["agreement"] = ""
-    temp = ""
-    if len(rows) >= 1:
-
-        for i in range(len(rows)):
-
-            if rows[i]["agreement"] == 11:
-                temp = "https://digital.library.carleton.ca/concern/works/pc289j04q|"
-            elif rows[i]["agreement"] == 12:
-                temp = (
-                    temp
-                    + "://digital.library.carleton.ca/concern/works/j9602065z|"
-                )
-            elif rows[i]["agreement"] == 13:
-                temp = (
-                    temp
-                    + "https://digital.library.carleton.ca/concern/works/tt44pm84n|"
-                )
-            elif rows[i]["agreement"] == 14:
-                temp = (
-                    temp
-                    + "https://digital.library.carleton.ca/concern/works/nv9352841|"
-                )
-            elif rows[i]["agreement"] == 15:
-                temp = (
-                    temp
-                    + "https://digital.library.carleton.ca/concern/works/zc77sq08x|"
-                )
-            elif rows[i]["agreement"] == 16:
-                temp = (
-                    temp
-                    + "https://digital.library.carleton.ca/concern/works/ng451h485|"
-                )
-            elif rows[i]["agreement"] == 17:
-                temp = (
-                    temp
-                    + "https://digital.library.carleton.ca/concern/works/4t64gn18r|"
-                )
-        etd["agreement"] = temp
-
-
-def add_access_right(dbc, etd):
-    request_form = "https://library.carleton.ca/forms/request-pdf-copy-thesis"
-    with dbc.cursor() as cursor:
-        sql = (
-            "SELECT "
-            "`node`.`uuid` as 'source_identifier', "
-            "`node`.`title` as 'title', "
-            "`node`.`status` as 'visibility', "
-            "`filename` as 'filename', "
-            "`uri` as 'uri' "
-            "FROM `node` "
-            "LEFT JOIN `field_data_etd_pdf` ON "
-            "`node`.`nid` = `field_data_etd_pdf`.`entity_id` "
-            "LEFT JOIN `file_managed` ON "
-            "`field_data_etd_pdf`.`etd_pdf_fid` = `file_managed`.`fid` "
-            "WHERE `node`.`type` = 'etd' AND (`node`.`status` = 1 AND filename IS NULL)"
-        )
-        cursor.execute(sql, etd)
-        rows = cursor.fetchall()
-    etd["access_right"] = request_form
+    agreement_id_to_hyrax_url = {
+        11: "https://digital.library.carleton.ca/concern/works/pc289j04q",
+        12: "https://digital.library.carleton.ca/concern/works/j9602065z",
+        13: "https://digital.library.carleton.ca/concern/works/tt44pm84n",
+        14: "https://digital.library.carleton.ca/concern/works/nv9352841",
+        15: "https://digital.library.carleton.ca/concern/works/zc77sq08x",
+        16: "https://digital.library.carleton.ca/concern/works/ng451h485",
+        17: "https://digital.library.carleton.ca/concern/works/4t64gn18r",
+    }
+    agreement_ids = [row["agreement"] for row in rows]
+    agreements = [
+        agreement_id_to_hyrax_url[agreement_id]
+        for agreement_id in agreement_ids
+    ]
+    etd["agreement"] = SPLIT_PATTERN.join(agreements)
 
 
 @click.command()
 @click.option("--host", default="localhost")
 @click.option("--user", default="readonly")
 @click.option("--password", prompt=True, hide_input=True)
-@click.option("--database")
+@click.option("--database", default="drupal")
 @click.option(
     "--parent-collection-id",
-    required=True,
-    help="The source ID for the parent collection in Hyrax.",
+    help="The ID for the parent collection in Hyrax, from the URL.",
+    default="XXXXXXXX",
 )
 @click.option(
     "--destination",
-    required=False,
     help="The destination for the private files to be sent to",
+    default="files",
 )
-def extract(host, user, password, database, parent_collection_id, destination):
+@click.pass_context
+def extract(
+    ctx, host, user, password, database, parent_collection_id, destination
+):
     # Connect to the database
     dbc = pymysql.connect(
         host=host,
@@ -571,28 +575,39 @@ def extract(host, user, password, database, parent_collection_id, destination):
         cursorclass=pymysql.cursors.DictCursor,
     )
 
-    etds = get_etds(dbc)
+    subject_error_log_path = pathlib.Path(
+        "curve_subject_not_migrated.txt"
+    ).resolve()
+    if subject_error_log_path.exists():
+        subject_error_log_path.unlink()
+    destination_path = pathlib.Path(destination).resolve()
+    shutil.rmtree(destination_path)
+    os.mkdir(destination_path)
 
-    # shallow_copy(destination)
-
-    with click.progressbar(etds) as bar:
-        for etd in bar:
-            add_creator(dbc, etd)
-            add_identifier(dbc, etd)
-            add_subjects(dbc, etd)
-            add_abstract(dbc, etd)
-            add_publisher(dbc, etd)
-            add_contributors(dbc, etd)
-            add_date(dbc, etd)
-            add_language(dbc, etd)
-            add_internal_notes(dbc, etd)
-            add_degree(dbc, etd)
-            add_degree_discipline(dbc, etd)
-            add_degree_level(dbc, etd)
-            add_pdf_file(dbc, etd)
-            add_supplemental_file(dbc, etd)
-            add_agreement(dbc, etd),
-            add_access_right(dbc, etd)
+    try:
+        with dbc:
+            etds = get_etds(dbc)
+            with click.progressbar(etds) as bar:
+                for etd in bar:
+                    add_creator(dbc, etd)
+                    add_identifier(dbc, etd)
+                    add_subjects(dbc, etd, subject_error_log_path)
+                    add_abstract(dbc, etd)
+                    add_publisher(dbc, etd)
+                    add_contributors(dbc, etd)
+                    add_date(dbc, etd)
+                    add_rights_notes(etd)
+                    add_language(dbc, etd)
+                    add_internal_notes(dbc, etd)
+                    add_degree(dbc, etd)
+                    add_degree_discipline(dbc, etd)
+                    add_degree_level(dbc, etd)
+                    add_pdf_file_or_access_right(dbc, etd, destination_path)
+                    add_supplemental_file(dbc, etd, destination_path)
+                    add_agreement(dbc, etd),
+    except Exception as e:
+        click.echo(e)
+        ctx.exit(1)
 
     print("Total: ", len(etds))
     print(
