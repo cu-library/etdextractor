@@ -99,11 +99,13 @@ def add_subjects(dbc, etd, subject_error_log_path):
     subjects = set()
     for row in rows:
         subject = row["subject"].strip()
-        if subject in s.proquest_to_lc:
-            subjects.update(s.proquest_to_lc[subject])
+        if subject.lower() in s.proquest_to_lc:
+            subjects.update(s.proquest_to_lc[subject.lower()])
         else:
             subject = process_subject(subject)
-            if subject in s.lc:
+            if subject in s.lc or all(
+                [part in s.lc for part in subject.split("--")]
+            ):
                 subjects.add(subject)
             else:
                 with open(
@@ -151,76 +153,107 @@ def process_subject(subject):
         ("Acculturaton", "Acculturation"),
         ("Achitecture", "Architecture"),
         ("Afghan war", "Afghan War"),
-        ("africa", "Africa"),
         ("Aids", "AIDS"),
         ("Air canada", "Air Canada"),
-        ("americans", "Americans"),
         ("Analog to digital", "Analog-to-digital"),
         ("Analog-to digital", "Analog-to-digital"),
         ("Armed forces", "Armed Forces"),
-        ("armed forces", "Armed Forces"),
         ("Bahai faith", "Bahai Faith"),
         ("Banff national park (Alta.)", "Banff National Park (Alta.)"),
         ("Boyne valley (Ire.)", "Boyne Valley (Ire.)"),
-        ("canadian", "Canadian"),
+        ("British columbia", "British Columbia"),
+        ("Cad/cam systems", "CAD/CAM systems"),
+        ("Candu reactors", "CANDU reactors"),
+        ("Carleton university", "Carleton University"),
         ("Catholic Church buildings", "Catholic church buildings"),
-        ("Catholic church", "Catholic Church"),
         ("Catholic Churches", "Catholic churches"),
-        ("charles", "Charles"),
+        ("Catholic church", "Catholic Church"),
         ("Chemistry, Analytic", "Analytical chemistry"),
         ("Cold war", "Cold War"),
-        ("communicaton", "communication"),
         ("Computer aided design", "Computer-aided design"),
         ("Die casting", "Die-casting"),
-        ("Candu reactors", "CANDU reactors"),
         ("Dna", "DNA"),
         ("Gas turbines", "Gas-turbines"),
         ("Georgraphy", "Geography"),
-        ("indians", "Indians"),
-        ("islam", "Islam"),
+        ("Global positioning system", "Global Positioning System"),
         ("Latin america", "Latin America"),
         ("Maritime provinces", "Maritime Provinces"),
         ("Middle east", "Middle East"),
+        ("Mimo systems", "MIMO systems"),
         ("Monte carlo method", "Monte Carlo method"),
         ("New brunswick", "New Brunswick"),
         ("Newfoundland and labrador", "Newfoundland and Labrador"),
         ("North america", "North America"),
-        ("north america", "North America"),
         ("Palestinian arab", "Palestinian Arab"),
-        ("salish", "Salish"),
+        ("Royal Canadian mounted police", "Royal Canadian Mounted Police"),
         ("Soviet union", "Soviet Union"),
         ("Sri lanka", "Sri Lanka"),
         ("Supersymetry", "supersymmetry"),
         ("Unesco", "UNESCO"),
         ("United nations", "United Nations"),
         ("United states", "United States"),
+        ("Unix", "UNIX"),
         ("Wireless communication system", "Wireless communication systems"),
         ("Wireless lan's", "Wireless LANs"),
         ("Wireless lans", "Wireless LANs"),
         ("World war", "World War"),
         ("World wide web", "World Wide Web"),
+        ("africa", "Africa"),
+        ("americans", "Americans"),
+        ("armed forces", "Armed Forces"),
+        ("canadian", "Canadian"),
+        ("charles", "Charles"),
+        ("communicaton", "communication"),
+        ("indians", "Indians"),
+        ("islam", "Islam"),
+        ("north america", "North America"),
+        ("salish", "Salish"),
+        ("systemss", "systems"),
     ]
     for bad, good in fix_table:
         subject = subject.replace(bad, good)
     replace_table = [
-        ("Aerial surveillance - canada", "Aerial surveillance--Canada"),
         ("AIDS to air navigation", "Aids to air navigation"),
+        ("Aerial surveillance - canada", "Aerial surveillance--Canada"),
         ("Airflow--Computersimulation", "Air flow--Computer simulation"),
         ("Apl (Computer program language)", "APL (Computer program language)"),
         (
             "Architecture-- ontario--Toronto (Ont.)",
             "Architecture--Ontario--Toronto",
         ),
+        ("Biological sciences biology - molecular", "Molecular biology"),
         ("Bouddary element methods", "Boundary element methods"),
+        (
+            "Canada--Foreign relations 1945-",
+            "Canada--Foreign relations--1945-",
+        ),
+        ("Communications and the arts mass communications", "Communications"),
         ("Headache - treatment", "Headache--Treatment"),
+        ("Latin American history", "Latin America--History"),
         ("Multinational Armed Forces", "Multinational armed forces"),
+        (
+            "Object oriented programming (Computer science)",
+            "Object-oriented programming (Computer science)",
+        ),
+        ("Philosophy, Religion, And theology philosophy", "Philosophy"),
+        ("Physical sciences engineering - aerospace", "Aerospace engineering"),
+        (
+            "Physical sciences engineering - biomedical",
+            "Biomedical engineering",
+        ),
+        ("Physical sciences engineering - civil", "Civil engineering"),
+        ("Psychology cognitive", "Cognitive psychology"),
+        ("Psychology general", "Psychology"),
         (
             "Safe sex in aids prevention--South Africa",
             "Safe sex in AIDS prevention--South Africa",
         ),
+        ("Social sciences sociology - general", "Sociology"),
         ("Treads (Computer programs)", "Threads (Computer programs)"),
         ("Uml (Computer science)", "UML (Computer science)"),
+        ("Women in politics--Canada", "Women--Political activity--Canada"),
         ("World War, 1939-1954--Canada", "World War, 1939-1945--Canada"),
+        ("Xml (Document markup language)", "XML (Document markup language)"),
     ]
     for old, new in replace_table:
         if subject == old:
@@ -240,7 +273,7 @@ def add_abstract(dbc, etd):
         rows = cursor.fetchall()
     if len(rows) > 1:
         raise ProcessingException(f"ERROR - {etd} has more than one abstract.")
-    elif len(rows) == 1:
+    elif len(rows) == 1: 
         soup = BeautifulSoup(rows[0]["abstract"], "html.parser")
         abstract = soup.get_text(strip=True)
         abstract = abstract.replace("\r", "")
@@ -562,9 +595,21 @@ def add_agreement(dbc, etd):
     help="The destination for the private files to be sent to",
     default="files",
 )
+@click.option(
+    "--subjects-only",
+    help="Process all fields or only process subjects",
+    is_flag=True,
+)
 @click.pass_context
 def extract(
-    ctx, host, user, password, database, parent_collection_id, destination
+    ctx,
+    host,
+    user,
+    password,
+    database,
+    parent_collection_id,
+    destination,
+    subjects_only,
 ):
     # Connect to the database
     dbc = pymysql.connect(
@@ -580,6 +625,24 @@ def extract(
     ).resolve()
     if subject_error_log_path.exists():
         subject_error_log_path.unlink()
+
+    if subjects_only:
+        try:
+            with dbc:
+                etds = get_etds(dbc)
+                with click.progressbar(etds) as bar:
+                    for etd in bar:
+                        add_subjects(dbc, etd, subject_error_log_path)
+        except Exception as e:
+            click.echo(e)
+            ctx.exit(1)
+        print("Total: ", len(etds))
+        print(
+            " Missing subjects: ",
+            sum(1 for etd in etds if etd["subjects"] == ""),
+        )
+        ctx.exit(0)
+
     destination_path = pathlib.Path(destination).resolve()
     shutil.rmtree(destination_path)
     os.mkdir(destination_path)
