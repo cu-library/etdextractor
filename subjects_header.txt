@@ -124,7 +124,7 @@ proquest_to_lc = {
     'folklore': ['Folklore'],
     'food science and technology': ['Food analysis'],
     'forestry and wildlife': ['Forests and forestry', 'Animals'],
-    'gender studies': ['Gender mainstreaming'],
+    'gender studies': ['Gender Identity'],
     'genetics': ['Genetics'],
     'geochemistry': ['Geochemistry'],
     'geodesy': ['Geodesy'],
@@ -294,7 +294,11 @@ proquest_to_lc = {
 }
 
 lc = [
+    "Canadian Broadcasting Corporation",
     "Carleton University",
-    "Strains and stresses--Mathematical models",
     "Computer networks--Quality control",
+    "Canadians, French-speaking",
+    "Federal-provincial relations--Canada",
     "Royal Canadian Mounted Police",
+    "Strains and stresses--Mathematical models",
+    "Canada--History",

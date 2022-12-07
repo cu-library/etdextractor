@@ -101,12 +101,20 @@ def add_subjects(dbc, etd, subject_error_log_path):
         subject = row["subject"].strip()
         if subject.lower() in s.proquest_to_lc:
             subjects.update(s.proquest_to_lc[subject.lower()])
+        elif subject in s.lc:
+            subjects.add(subject)
         else:
             subject = process_subject(subject)
+            subject_last_removed = "--".join(subject.split("--")[:-1])
+            subject_last_two_removed = "--".join(subject.split("--")[:-2])
             if subject in s.lc or all(
                 [part in s.lc for part in subject.split("--")]
             ):
                 subjects.add(subject)
+            elif subject_last_removed in s.lc:
+                subjects.add(subject_last_removed)
+            elif subject_last_two_removed in s.lc:
+                subjects.add(subject_last_two_removed)
             else:
                 with open(
                     subject_error_log_path, "a", encoding="utf-8"
@@ -164,6 +172,7 @@ def process_subject(subject):
         ("British columbia", "British Columbia"),
         ("Cad/cam systems", "CAD/CAM systems"),
         ("Candu reactors", "CANDU reactors"),
+        ("Caribbean area", "Caribbean Area"),
         ("Carleton university", "Carleton University"),
         ("Catholic Church buildings", "Catholic church buildings"),
         ("Catholic Churches", "Catholic churches"),
@@ -176,14 +185,19 @@ def process_subject(subject):
         ("Gas turbines", "Gas-turbines"),
         ("Georgraphy", "Geography"),
         ("Global positioning system", "Global Positioning System"),
+        ("Great britain", "Great Britain"),
         ("Latin america", "Latin America"),
         ("Maritime provinces", "Maritime Provinces"),
+        ("Metis", "Métis"),
         ("Middle east", "Middle East"),
         ("Mimo systems", "MIMO systems"),
         ("Monte carlo method", "Monte Carlo method"),
+        ("Navier-stokes", "Navier-Stokes"),
         ("New brunswick", "New Brunswick"),
         ("Newfoundland and labrador", "Newfoundland and Labrador"),
         ("North america", "North America"),
+        ("Nova scotia", "Nova Scotia"),
+        ("Perestroika", "Perestroĭka"),
         ("Palestinian arab", "Palestinian Arab"),
         ("Royal Canadian mounted police", "Royal Canadian Mounted Police"),
         ("Soviet union", "Soviet Union"),
@@ -193,7 +207,6 @@ def process_subject(subject):
         ("United nations", "United Nations"),
         ("United states", "United States"),
         ("Unix", "UNIX"),
-        ("Wireless communication system", "Wireless communication systems"),
         ("Wireless lan's", "Wireless LANs"),
         ("Wireless lans", "Wireless LANs"),
         ("World war", "World War"),
@@ -208,7 +221,8 @@ def process_subject(subject):
         ("islam", "Islam"),
         ("north america", "North America"),
         ("salish", "Salish"),
-        ("systemss", "systems"),
+        ("Volcanic ash, Tuff, Etc.", "Volcanic ash, tuff, etc."),
+        ("Taillings (Metallurgy)", "Tailings (Metallurgy)"),
     ]
     for bad, good in fix_table:
         subject = subject.replace(bad, good)
@@ -221,14 +235,46 @@ def process_subject(subject):
             "Architecture-- ontario--Toronto (Ont.)",
             "Architecture--Ontario--Toronto",
         ),
+        ("Behavioral", "Behaviorism (Psychology)"),
         ("Biological sciences biology - molecular", "Molecular biology"),
+        ("Biological sciences biology - ecology", "Ecology"),
+        ("Biological sciences biology - neuroscience", "Neurosciences"),
         ("Bouddary element methods", "Boundary element methods"),
         (
             "Canada--Foreign relations 1945-",
             "Canada--Foreign relations--1945-",
         ),
+        ("Canada - history", "Canada--History"),
+        (
+            "Canadian broadcasting corporation",
+            "Canadian Broadcasting Corporation",
+        ),
+        (
+            "Canada--Economic conditions 1971-1991",
+            "Canada--Economic conditions",
+        ),
+        ("Cc+ (Computer program language)", "C++ (Computer program language)"),
+        ("City planning--Ontario--Ottawa", "City planning"),
+        ("Communications and the arts architecture", "Architecture"),
+        ("Communications and the arts design and decorative arts", "Design"),
+        (
+            "Communications and the arts information science",
+            "Information science",
+        ),
         ("Communications and the arts mass communications", "Communications"),
+        ("Corba (Computer architecture)", "CORBA (Computer architecture)"),
+        ("Earth sciences geology", "Geology"),
+        ("Psychology developmental", "Developmental psychology"),
         ("Headache - treatment", "Headache--Treatment"),
+        ("Html (Document markup language)", "HTML (Document markup language)"),
+        (
+            "Indians of North America--Legal status, Laws, Etc.--Canada",
+            "Indians of North America--Legal status, laws, etc.--Canada",
+        ),
+        (
+            "Language, Literature, And linguistics language - linguistics",
+            "Linguistics",
+        ),
         ("Latin American history", "Latin America--History"),
         ("Multinational Armed Forces", "Multinational armed forces"),
         (
@@ -242,18 +288,278 @@ def process_subject(subject):
             "Biomedical engineering",
         ),
         ("Physical sciences engineering - civil", "Civil engineering"),
+        ("Physical sciences computer science", "Computer science"),
+        (
+            "Physical sciences engineering - electronics and electrical",
+            "Electrical engineering",
+        ),
+        (
+            "Physical sciences engineering - mechanical",
+            "Mechanical engineering",
+        ),
+        ("Physical sciences engineering - system science", "System analysis"),
+        (
+            "Physical sciences engineering - environmental",
+            "Environmental engineering",
+        ),
+        ("Physical sciences physics - radiation", "Radiation"),
         ("Psychology cognitive", "Cognitive psychology"),
         ("Psychology general", "Psychology"),
+        ("Psychology social", "Social psychology"),
         (
             "Safe sex in aids prevention--South Africa",
             "Safe sex in AIDS prevention--South Africa",
         ),
+        ("Social sciences law", "Law"),
+        (
+            "Social sciences sociology - social structure and development",
+            "Social structure",
+        ),
+        ("Social sciences geography", "Geography"),
+        ("Social sciences anthropology - cultural", "Ethnology"),
+        (
+            "Social sciences sociology - criminology and penology",
+            "Criminology",
+        ),
+        (
+            "Social sciences political science - public administration",
+            "Public administration",
+        ),
+        ("Social sciences political science - general", "Political science"),
+        (
+            "Social sciences sociology - public and social welfare",
+            "Public welfare",
+        ),
         ("Social sciences sociology - general", "Sociology"),
+        ("Social sciences women’s studies", "Women's studies"),
+        (
+            "Tcp/ip (Computer network protocol)",
+            "TCP/IP (Computer network protocol)",
+        ),
+        ("Tires, Rubber--Traction", "Tires--Traction"),
         ("Treads (Computer programs)", "Threads (Computer programs)"),
         ("Uml (Computer science)", "UML (Computer science)"),
         ("Women in politics--Canada", "Women--Political activity--Canada"),
+        ("Women authors, Canadian 20th century", "Women authors, Canadian"),
         ("World War, 1939-1954--Canada", "World War, 1939-1945--Canada"),
         ("Xml (Document markup language)", "XML (Document markup language)"),
+        ("Women in politics", "Women--Political activity"),
+        ("Real time data processing", "Real-time data processing"),
+        ("Heat transmission", "Heat--Transmission"),
+        ("European economic community", "European Economic Community"),
+        ("Corporations, Government", "Government corporations"),
+        (
+            "Progressive conservative party of canada",
+            "Political parties--Canada",
+        ),
+        ("Polymers and polymerization", "Polymerization"),
+        (
+            "Physical sciences artificial intelligence",
+            "Artificial intelligence",
+        ),
+        ("Pade approximant", "Padé approximant"),
+        ("Descrete-time systems", "Discrete-time systems"),
+        ("Time domain analysis", "Time-domain analysis"),
+        ("Canada. Canadian charter of rights and freedoms", "Canada"),
+        ("World politics 20th century", "World politics"),
+        ("World politics 1945-", "World politics"),
+        ("Ultrasonics in chemistry", "Ultrasonics"),
+        ("Social sciences social work", "Social service"),
+        (
+            "Social sciences political science - international law and relations",
+            "International law",
+        ),
+        ("Social sciences history - Canadian", "Canada--History"),
+        ("Social sciences gender studies", "Gender identity"),
+        ("Social sciences Canadian studies", "Canada"),
+        ("Social sciences business administration - management", "Management"),
+        (
+            "Simple network management protocol (Computer network protocol)",
+            "Simple Network Management Protocol (Computer network protocol)",
+        ),
+        ("Physical sciences mathematics", "Mathematics"),
+        ("Physical sciences engineering - robotics", "Robotics"),
+        (
+            "Physical sciences engineering - materials science",
+            "Materials science",
+        ),
+        ("Physical sciences engineering - general", "Engineering"),
+        ("Industrial project management", "Project management"),
+        ("Heat transmission--Mathematical models", "Heat--Transmission"),
+        ("Hadron collider", "Large Hadron Collider (France and Switzerland)"),
+        ("Food analysis", "Food--Analysis"),
+        ("Earth sciences physical geography", "Geography"),
+        (
+            "Descrete-time systems--Computer simulation",
+            "Discrete-time systems",
+        ),
+        ("Corporations, Government--Canada", "Government corporations"),
+        ("Communications and the arts cinema", "Motion pictures"),
+        (
+            "Canadian literature 20th century--History and criticism",
+            "Canadian literature",
+        ),
+        ("Biological sciences biology - entomology", "Entomology"),
+        ("World politics 1989-", "World politics"),
+        ("World bank", "Development banks"),
+        (
+            "Vhdl (Computer hardware description language)",
+            "VHDL (Computer hardware description language)",
+        ),
+        (
+            "User-interfaces (Computer systems)",
+            "User interfaces (Computer systems)",
+        ),
+        ("Noradrenaline", "Biology"),
+        ("Telesat canada", "Artificial satellites in telecommunication"),
+        ("Sql (Computer program language)", "SQL (Computer program language)"),
+        ("Sonet (Data transmission)", "SONET (Data transmission)"),
+        (
+            "Social sciences anthropology - medical and forensic",
+            "Anthropology",
+        ),
+        ("Social sciences economics - commerce-business", "Economics"),
+        ("Social sciences economics - theory", "Economics"),
+        ("Social sciences history - european", "History"),
+        ("Social sciences history - latin american", "History"),
+        (
+            "Social sciences native american studies",
+            "Indians of North America",
+        ),
+        (
+            "Social sciences sociology - individual and family studies",
+            "Sociology",
+        ),
+        ("Semantic web", "Semantic Web"),
+        ("Antibodies", "Biology"),
+        ("Canada. young offenders act", "Canada"),
+        ("Canada. Canadian army--History world war, 1939-1945", "Canada"),
+        ("Blacks--Nova Scotia", "Nova Scotia"),
+        ("Architecture and community", "Architecture"),
+        ("Analytical chemistryal", "Chemistry"),
+        (
+            "Voltage controlled oscillators--Design and construction",
+            "Electrical engineering",
+        ),
+        ("Upper region (Ghana)--Economic conditions", "Ghana"),
+        ("Tipula iridescent virus", "Biology"),
+        ("Television programs for women--Canada", "Television"),
+        ("Speech recognition systems", "Automatic speech recognition"),
+        ("Spectrochemistry", "Chemistry"),
+        ("Spatial orientation (Psychology)", "Psychology"),
+        ("Self protective behavior", "Psychology"),
+        (
+            "Sediments (Geology)--Ontario, Northern--Abitibi greenstone belt--Analysis",
+            "Geology",
+        ),
+        (
+            "Ring network (Computer networks)",
+            "Ring networks (Computer networks)",
+        ),
+        ("Reform party of canada", "Political parties--Canada"),
+        ("Public spaces--Ontario--Ottawa--Case studies", "Public spaces"),
+        ("Psychology behavioral", "Psychology"),
+        ("Gas-detectors", "Gas detectors"),
+        ("East and west", "East and West"),
+        ("Earthquakes and hydraulic structures", "Earthquakes"),
+        ("Carleton skills training package", "Carleton University"),
+        ("Spice (Computer file)", "Computers"),
+        ("Psychology clinical", "Psychology"),
+        ("Plants, Effect of stress on", "Botany"),
+        ("Plants, Effect of ethylene on", "Botany"),
+        ("Physical sciences statistics", "Statistics"),
+        ("Physical sciences engineering - mining", "Mines and mining"),
+        ("Philosophy, Modern 20th century", "Philosophy"),
+        ("Phase locked loops", "Phase-locked loops"),
+        ("Parti quebecois", "Political parties--Canada"),
+        ("Particle (Nuclear physics)", "Physics"),
+        ("Pars distalis", "Biology"),
+        ("Orb (Computer file)", "Computers"),
+        ("Opensource software", "Computers"),
+        (
+            "Okanagan river valley (B.c. and wash.)",
+            "Okanagan River Valley (B.C. and Wash.)",
+        ),
+        (
+            "Object oriented methods (Computer science)",
+            "Object-oriented methods (Computer science)",
+        ),
+        ("National council of women of canada--History", "Canada"),
+        ("Mpls standard", "MPLS standard"),
+        ("Moire method", "Moiré method"),
+        ("Metals at high temperatures", "Metals"),
+        ("Low level radiation--Dose-response relationship", "Radiation"),
+        (
+            "Local transit--Ridership--Ontario--Ottawa-carleton--Case studies",
+            "Local transit",
+        ),
+        ("Leda clay", "Geology"),
+        (
+            "Language, Literature, And linguistics literature - english",
+            "Linguistics",
+        ),
+        ("Kosovo war, 1998-1999", "Kosovo War, 1998-1999"),
+        ("Korteweg-de vries equation", "Korteweg-de Vries equation"),
+        ("Kingston penitentiary", "Ontario"),
+        ("Jewish-arab relations", "Jewish-Arab relations"),
+        (
+            "International english language testing system",
+            "English language--Ability testing",
+        ),
+        ("Internal navigation (Aeronautics)", "Aeronautics"),
+        ("Industrial managemen--Canada", "Management"),
+        ("Hiv (Viruses)", "HIV infections"),
+        ("Hibernia oil field", "Oil fields"),
+        ("Heat transmission--Data processing", "Heat--Transmission"),
+        (
+            "Health and environmental sciences health sciences - public health",
+            "Public health",
+        ),
+        ("Harper, Mount region (Yukon)", "Yukon"),
+        ("General agreement on tariffs and trade (1947)", "Tariff"),
+        ("Frozen ground research", "Geology"),
+        ("Frogs--Ontario--Ottawa-carleton--Maps", "Frogs"),
+        ("Farm products", "Agriculture"),
+        (
+            "English language--Technical english--Study and teaching--Foreign speakers",
+            "English",
+        ),
+        ("Engineering - industrial", "Industrial engineering"),
+        ("Electrochromic devises", "Electrochromic devices"),
+        ("Ejercito zapatista de liberacion nacional (Mexico)", "Mexico"),
+        ("Earth sciences remote sensing", "Remote sensing"),
+        ("Earth sciences mineralogy", "Mineralogy"),
+        ("Adolescence psychology", "Psychology"),
+        ("Earth sciences geophysics", "Geophysics"),
+        ("Difraction gratings", "Diffraction gratings"),
+        ("Defence research establishment ottawa", "Ottawa (Ont.)"),
+        ("Ddt (Insecticide)", "DDT (Insecticide)"),
+        ("Creation (Literary, Artistic, Etc.)", "Creation"),
+        ("Computer assisted instruction", "Computer-assisted instruction"),
+        ("Communications and the arts speech communication", "Speech"),
+        ("Communications and the arts music", "Music"),
+        ("Communications and the arts art history", "Art"),
+        ("City planning--Ontario--Ottawa--Case studies", "City planning"),
+        ("Canadian space agency", "Canada"),
+        ("Canadians, French speaking--Ontario", "Canada"),
+        (
+            "Canadian poetry (English)--Quebec (Province)--Montreal--History and criticism",
+            "Canada",
+        ),
+        ("Canadian literature 19th century--History and criticism", "Canada"),
+        ("Canadian fiction 20th century--History and criticism", "Canada"),
+        (
+            "Canada. parliament. house of commons--Television broadcasting of proceedings",
+            "Canada",
+        ),
+        ("Canada. information canada", "Canada"),
+        ("Brain research", "Brain"),
+        ("Biological sciences biology - genetics", "Genetics"),
+        ("Biological sciences biology - general", "Biology"),
+        ("Biological sciences biology - animal physiology", "Biology"),
+        ("Arab-israeli conflict 1973-1993", "Arab-Israeli conflict"),
+        ("Alkali igneous rocks", "Geology"),
+        ("Adolescence psychology", "Psychology"),
     ]
     for old, new in replace_table:
         if subject == old:
@@ -273,7 +579,7 @@ def add_abstract(dbc, etd):
         rows = cursor.fetchall()
     if len(rows) > 1:
         raise ProcessingException(f"ERROR - {etd} has more than one abstract.")
-    elif len(rows) == 1: 
+    elif len(rows) == 1:
         soup = BeautifulSoup(rows[0]["abstract"], "html.parser")
         abstract = soup.get_text(strip=True)
         abstract = abstract.replace("\r", "")
