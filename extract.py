@@ -400,12 +400,12 @@ def add_pdf_file_or_access_right(dbc, etd, destination_path):
     if len(rows) > 1:
         raise ProcessingException(f"ERROR - {etd} has more than one pdf file.")
     elif len(rows) == 1:
-        etd["files"] = process_file_uri(
+        etd["file"] = process_file_uri(
             rows[0]["uri"], destination_path, rows[0]["md5"]
         )
         etd["access_right"] = ""
     else:
-        etd["files"] = ""
+        etd["file"] = ""
         etd["access_right"] = ACCESS_NOTE
 
 
@@ -433,8 +433,8 @@ def add_supplemental_file(dbc, etd, destination_path):
             f"ERROR - {etd} has more than one supplemental file."
         )
     elif len(rows) == 1:
-        etd["files"] = (
-            etd["files"]
+        etd["file"] = (
+            etd["file"]
             + SPLIT_PATTERN
             + process_file_uri(
                 rows[0]["uri"], destination_path, rows[0]["md5"]
@@ -624,7 +624,7 @@ def extract(
         "degree_level",
         "resource_type",
         "parents",
-        "files",
+        "file",
         "rights_notes",
         "visibility",
         "agreement",
@@ -656,7 +656,7 @@ def extract(
                     etd["degree_level"],
                     "Thesis",
                     parent_collection_id,
-                    etd["files"],
+                    etd["file"],
                     etd["rights_notes"],
                     etd["visibility"],
                     etd["agreement"],
