@@ -260,7 +260,7 @@ def add_date(dbc, etd):
         raise ProcessingException(
             f"ERROR - {etd} does not have exactly one date."
         )
-    etd["date"] = rows[0]["date"][:4]
+    etd["date"] = rows[0]["date"][:10]
 
 
 def add_rights_notes(etd):
