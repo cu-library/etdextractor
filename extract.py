@@ -265,7 +265,7 @@ def add_date(dbc, etd):
 
 def add_rights_notes(etd):
     etd["rights_notes"] = (
-        f"Copyright © {etd['date']} the author(s). Theses may be used for "
+        f"Copyright © {etd['date'][:4]} the author(s). Theses may be used for "
         "non-commercial research, educational, or related academic "
         "purposes only. Such uses include personal study, distribution to"
         " students, research and scholarship. Theses may only be shared by"
