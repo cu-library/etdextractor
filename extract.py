@@ -265,6 +265,7 @@ def add_date(dbc, etd):
 
 def add_rights_notes(etd):
     etd["rights_notes"] = (
+<<<<<<< HEAD
             f"Copyright © {etd['date'][:4]} the author(s). Theses may be used for "
             "non-commercial research, educational, or related academic "
             "purposes only. Such uses include personal study, research, "
@@ -275,6 +276,18 @@ def add_rights_notes(etd):
             "indirectly via a for-profit platform; no adaptation or "
             "derivative works are permitted without consent from the "
             "copyright owner."
+=======
+        f"Copyright © {etd['date'][:4]} the author(s). Theses may be used for "
+        "non-commercial research, educational, or related academic "
+        "purposes only. Such uses include personal study, distribution to "
+        "students, research and scholarship. Theses may only be shared by "
+        "linking to the Carleton University Institutional Repository and "
+        "no part may be copied without proper attribution to the author; "
+        "no part may be used for commercial purposes directly or "
+        "indirectly via a for-profit platform; no adaptation or "
+        "derivative works are permitted without consent from the "
+        "copyright owner."
+>>>>>>> 24988237cd2090ac4d8dc41fb3285807648e09b7
     )
     print(etd["rights_note"])
 
@@ -487,13 +500,13 @@ def add_agreement(dbc, etd):
         cursor.execute(sql, (etd["nid"],))
         rows = cursor.fetchall()
     agreement_id_to_hyrax_url = {
-        11: "https://digital.library.carleton.ca/concern/works/pc289j04q",
-        12: "https://digital.library.carleton.ca/concern/works/j9602065z",
-        13: "https://digital.library.carleton.ca/concern/works/tt44pm84n",
-        14: "https://digital.library.carleton.ca/concern/works/nv9352841",
-        15: "https://digital.library.carleton.ca/concern/works/zc77sq08x",
-        16: "https://digital.library.carleton.ca/concern/works/ng451h485",
-        17: "https://digital.library.carleton.ca/concern/works/4t64gn18r",
+        11: "https://repository.library.carleton.ca/concern/works/pc289j04q",
+        12: "https://repository.library.carleton.ca/concern/works/j9602065z",
+        13: "https://repository.library.carleton.ca/concern/works/tt44pm84n",
+        14: "https://repository.library.carleton.ca/concern/works/nv9352841",
+        15: "https://repository.library.carleton.ca/concern/works/zc77sq08x",
+        16: "https://repository.library.carleton.ca/concern/works/ng451h485",
+        17: "https://repository.library.carleton.ca/concern/works/4t64gn18r",
     }
     agreement_ids = [row["agreement"] for row in rows]
     agreements = [
