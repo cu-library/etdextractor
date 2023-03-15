@@ -265,18 +265,6 @@ def add_date(dbc, etd):
 
 def add_rights_notes(etd):
     etd["rights_notes"] = (
-<<<<<<< HEAD
-            f"Copyright © {etd['date'][:4]} the author(s). Theses may be used for "
-            "non-commercial research, educational, or related academic "
-            "purposes only. Such uses include personal study, research, "
-            "scholarship, and teaching. Theses may only be shared by "
-            "linking to Carleton University Institutional Repository and no "
-            "part may be used without proper attribution to the author. No "
-            "part may be used for commercial purposes directly or "
-            "indirectly via a for-profit platform; no adaptation or "
-            "derivative works are permitted without consent from the "
-            "copyright owner."
-=======
         f"Copyright © {etd['date'][:4]} the author(s). Theses may be used for "
         "non-commercial research, educational, or related academic "
         "purposes only. Such uses include personal study, distribution to "
@@ -287,7 +275,6 @@ def add_rights_notes(etd):
         "indirectly via a for-profit platform; no adaptation or "
         "derivative works are permitted without consent from the "
         "copyright owner."
->>>>>>> 24988237cd2090ac4d8dc41fb3285807648e09b7
     )
     print(etd["rights_note"])
 
